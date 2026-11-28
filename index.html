@@ -1439,7 +1439,7 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
       '<div class="filters">' + chips + '</div>' + (byNew ? '<div class="sortnote">Newest payment first</div>' : '') + '<div class="panel">' +
       (items.length ? items.slice(0, 60).map(function (x) {
         var st = statusOf(x), totalDue = (Number(x[4]) || 0) + (Number(x[10]) || 0), due = Math.max(0, r2(totalDue - x[5])), isOpen = admOpenRow === x[0];
-        return '<div class="arow has' + (isOpen ? ' open' : '') + '" data-k="' + x[0] + '" role="button" tabindex="0" aria-expanded="' + isOpen + '"><div class="l"><b>' + esc(x[3] || '—') + '</b><span class="st-' + st + '">' + fmt(x[5]) + ' / ' + fmt(x[4]) + '</span></div>' +
+        return '<div class="arow has' + (isOpen ? ' open' : '') + '" data-k="' + x[0] + '" role="button" tabindex="0" aria-expanded="' + isOpen + '"><div class="l"><b>' + esc(x[3] || '—') + '</b><span class="st-' + st + '">' + fmt(x[5]) + ' / ' + fmt(totalDue) + '</span></div>' +
           '<div class="l"><span>' + esc(x[1]) + '</span><span>' +
           (Number(x[10]) > 0 ? 'Previous Due ' + fmt(x[10]) + ' · ' : '') +
           (due > 0 ? 'Due ' + fmt(due) + ' · ' : '') + (x[6] ? x[6] + (x[6] === 1 ? ' payment' : ' payments') + ' · last ' + esc(x[7]) : 'no payment') + '</span></div>' +
