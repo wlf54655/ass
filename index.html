@@ -668,7 +668,7 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
         if (!isAdminUser) $('monthStatic').innerHTML = esc(month) + '<small>Current</small>';
         showMonthChip();
         rows = r.rows.map(function (x) {
-          return { r: x.r, c: x.c, p: x.p, sc: x.sc, t: x.t, pays: x.pays, m: x.m,
+          return { r: x.r, c: x.c, p: x.p, sc: x.sc, pd: Number(x.pd) || 0, t: x.t, pays: x.pays, m: x.m,
                    pending: [], hay: (x.c + ' ' + x.p).toLowerCase() };
         });
         byRow = {};
@@ -707,9 +707,9 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
         }
         rows.forEach(function (it) {
           if (it.pending.length) return;                    // don't overwrite what is being saved
-          var st = r.state[it.r] || { t: 0, pays: [], m: '' };
-          if (st.t !== it.t || st.pays.length !== it.pays.length || st.m !== it.m) {
-            it.t = st.t; it.pays = st.pays; it.m = st.m;
+          var st = r.state[it.r] || { t: 0, pays: [], m: '', pd: 0 };
+          if (st.t !== it.t || st.pays.length !== it.pays.length || st.m !== it.m || Number(st.pd || 0) !== it.pd) {
+            it.t = st.t; it.pays = st.pays; it.m = st.m; it.pd = Number(st.pd) || 0;
             updateRowDom(it.r);
           }
         });
@@ -739,7 +739,7 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
   function updateCount() {
     if (!isAdminUser) return;                                // totals are for the admin only: not even put on the page
     var got = 0, exp = 0;
-    rows.forEach(function (it) { got += shownTotal(it); exp += Number(it.sc) || 0; });
+    rows.forEach(function (it) { got += shownTotal(it); exp += (Number(it.sc) || 0) + (Number(it.pd) || 0); });
     got = r2(got); exp = r2(exp);
     var p = exp > 0 ? Math.min(100, Math.round(got / exp * 1000) / 10) : 0;
     $('count').innerHTML = '<b>' + fmt(got) + '</b> collected of ' + fmt(exp);
@@ -807,8 +807,8 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
     if (pendingOf(it).length) return 'saving';
     var t = shownTotal(it);
     if (!(t > 0)) return 'none';
-    var sc = Number(it.sc);
-    return (isFinite(sc) && sc > 0 && t < sc) ? 'part' : 'paid';
+    var sc = (Number(it.sc) || 0) + (Number(it.pd) || 0);
+    return (sc > 0 && t < sc) ? 'part' : 'paid';
   }
 
   function valHtml(it) {
@@ -822,13 +822,13 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
   }
 
   function dueAmount(it) {
-    var sc = Number(it.sc);
-    if (!isFinite(sc) || sc <= 0 || it.sc === '') return null;
+    var sc = (Number(it.sc) || 0) + (Number(it.pd) || 0);
+    if (sc <= 0) return null;
     return r2(sc - shownTotal(it));
   }
   function dueHtml(it) {
     var d = dueAmount(it);
-    return '<span class="duetag">' + ((d !== null && d > 0 && shownTotal(it) > 0) ? 'Due ' + esc(fmt(d)) : '') + '</span>';
+    return '<span class="duetag">' + ((d !== null && d > 0) ? 'Due ' + esc(fmt(d)) : '') + '</span>';
   }
 
   function histHtml(it) {                                    // entry screen: only what is still being saved / failed (no payment history)
@@ -847,6 +847,7 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
         '<div class="info"><div class="meta">' +
           '<span class="code">' + esc(it.c || '—') + '</span>' +
           '<span>Charge <b>' + esc(fmt(it.sc)) + '</b></span>' +
+          (it.pd > 0 ? '<span>Previous Due <b>' + esc(fmt(it.pd)) + '</b></span>' : '') +
           dueHtml(it) +
         '</div><div class="pname">' + esc(it.p) + '</div></div>' +
         valHtml(it) +
@@ -859,7 +860,7 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
     var d = dueAmount(it), t = shownTotal(it), chips = '', note = '';
     if (d !== null && d > 0) {
       chips = '<button type="button" class="chip" data-act="fill" data-v="' + esc(d) + '">' +
-              (t > 0 ? 'Remaining ' : '') + esc(fmt(d)) + '</button>';
+              (t > 0 ? 'Remaining ' : 'Total Due ') + esc(fmt(d)) + '</button>';
     } else if (d !== null && t > 0) {
       note = '<p class="paidnote">✓ Fully paid. You can still add another payment.</p>';
     }
