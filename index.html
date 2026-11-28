@@ -1152,12 +1152,12 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
     });
     if (!names.length) sum.push(['No payments yet.']);
 
-    var proj = [['Month', 'Code', 'Project', 'Service charge', 'Collected', 'Still due', 'Status', 'Payments', 'Last paid by', 'Last payment time', 'Remarks']];
+    var proj = [['Month', 'Code', 'Project', 'Service charge', 'Previous Due', 'Collected', 'Still due', 'Status', 'Payments', 'Last paid by', 'Last payment time', 'Remarks']];
     var pays = [], payRows = [];
     months.forEach(function (m) {
       (data[m.name] || []).forEach(function (x) {
         var h = x[9] || [], last = h.length ? h[h.length - 1] : null;
-        proj.push([m.name, x[1], x[3], num_(x[4]), num_(x[5]), num_(Math.max(0, r2(x[4] - x[5]))), statusText_(x), num_(x[6]),
+        proj.push([m.name, x[1], x[3], num_(x[4]), num_(x[10]), num_(x[5]), num_(Math.max(0, r2(x[4] + (Number(x[10]) || 0) - x[5]))), statusText_(x), num_(x[6]),
                    x[7] || '', last ? when_(last[2]) : '', x[8] || '']);
         h.forEach(function (p, i) { payRows.push({ ts: stamp_(p[2]), a: [m.name, x[1], x[3], num_(i + 1), num_(p[0]), p[1], when_(p[2])] }); });
       });
@@ -1190,12 +1190,12 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
 
   /* project rows / payment rows from a list of { m: month name, x: project row } */
   function projAoa_(list) {
-    var a = [['Month', 'Code', 'Project', 'Service charge', 'Collected', 'Still due', 'Status', 'Payments', 'Last paid by', 'Last payment time', 'Remarks']];
+    var a = [['Month', 'Code', 'Project', 'Service charge', 'Previous Due', 'Collected', 'Still due', 'Status', 'Payments', 'Last paid by', 'Last payment time', 'Remarks']];
     list.forEach(function (e) {
       var x = e.x, h = x[9] || [], last = h.length ? h[h.length - 1] : null, rm = [];
       if (x[8]) rm.push(x[8]);                                // old-style Remarks column of older sheets
       h.forEach(function (p) { if (p[3]) rm.push(p[1] + ': ' + p[3]); });
-      a.push([e.m, x[1], x[3], num_(x[4]), num_(x[5]), num_(Math.max(0, r2(x[4] - x[5]))), statusText_(x), num_(x[6]),
+      a.push([e.m, x[1], x[3], num_(x[4]), num_(x[10]), num_(x[5]), num_(Math.max(0, r2(x[4] + (Number(x[10]) || 0) - x[5]))), statusText_(x), num_(x[6]),
               x[7] || '', last ? when_(last[2]) : '', rm.join(' | ')]);
     });
     return a;
@@ -1387,7 +1387,7 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
 
   function kpi(label, val, cls) { return '<div class="kpi ' + cls + '"><small>' + esc(label) + '</small><b>' + esc(val) + '</b></div>'; }
 
-  function statusOf(x) { return x[5] <= 0 ? 'unpaid' : (x[4] > 0 && x[5] < x[4] ? 'partial' : 'paid'); }
+  function statusOf(x) { var totalDue = (Number(x[4]) || 0) + (Number(x[10]) || 0); return x[5] <= 0 ? 'unpaid' : (totalDue > 0 && x[5] < totalDue ? 'partial' : 'paid'); }
 
   function adminHistHtml(x) {
     var h = x[9] || [], out = '<div class="hist"><div class="hh">Payment history</div>';
@@ -1438,9 +1438,10 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbz_vC3N92z-kqe3pDrLSv-mrp
     box.innerHTML = '<input class="aq" type="search" placeholder="Search project or code" value="' + esc(admQ) + '" autocomplete="off">' +
       '<div class="filters">' + chips + '</div>' + (byNew ? '<div class="sortnote">Newest payment first</div>' : '') + '<div class="panel">' +
       (items.length ? items.slice(0, 60).map(function (x) {
-        var st = statusOf(x), due = Math.max(0, r2(x[4] - x[5])), isOpen = admOpenRow === x[0];
+        var st = statusOf(x), totalDue = (Number(x[4]) || 0) + (Number(x[10]) || 0), due = Math.max(0, r2(totalDue - x[5])), isOpen = admOpenRow === x[0];
         return '<div class="arow has' + (isOpen ? ' open' : '') + '" data-k="' + x[0] + '" role="button" tabindex="0" aria-expanded="' + isOpen + '"><div class="l"><b>' + esc(x[3] || '—') + '</b><span class="st-' + st + '">' + fmt(x[5]) + ' / ' + fmt(x[4]) + '</span></div>' +
           '<div class="l"><span>' + esc(x[1]) + '</span><span>' +
+          (Number(x[10]) > 0 ? 'Previous Due ' + fmt(x[10]) + ' · ' : '') +
           (due > 0 ? 'Due ' + fmt(due) + ' · ' : '') + (x[6] ? x[6] + (x[6] === 1 ? ' payment' : ' payments') + ' · last ' + esc(x[7]) : 'no payment') + '</span></div>' +
           (isOpen ? adminHistHtml(x) : '') + '</div>';
       }).join('') + (items.length > 60 ? '<div class="empty">Showing first 60 of ' + items.length + '. Use search.</div>' : '')
